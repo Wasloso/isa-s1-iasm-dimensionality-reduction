@@ -1,0 +1,14 @@
+{
+    "[python]": {
+        "editor.formatOnSaveMode": "file",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
+        },
+        "editor.defaultFormatter": "charliermarsh.ruff",
+    },
+    "ruff.nativeServer": "on",
+    "ruff.lint.enable": true,           
+    "python.terminal.activateEnvironment": true
+}

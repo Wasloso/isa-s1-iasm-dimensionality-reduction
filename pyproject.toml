@@ -1,0 +1,45 @@
+[project]
+name = "dimensionality-reduction"
+version = "0.1.0"
+description = "A very fun ISA project"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "numpy>=2.4.2",
+    "pandas>=3.0.1",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.4",
+]
+
+[tool.ruff]
+line-length = 120
+
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+]
+
+# Might tweak later
+[tool.ruff.lint]
+select = [
+    "F", "E", "W", "I", "N", "UP", "B", "A", "C4", "SIM", "RUF", "PL"
+]
+ignore = [
+    "ANN",     
+    "D",
+    "ARG001",
+    "PLR0913",
+    "PLR2004",
+    "COM812",
+    "ISC001",
+]
+unfixable = ["F401", "F841"]
+
+[tool.ruff.format]
+quote-style = "double"
