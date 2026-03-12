@@ -15,7 +15,7 @@
     "python.terminal.activateEnvironment": true,
     "python.analysis.ignore": ["*"],
     "python.languageServer": "Default",
-    "editor.rulers": [88],
+    "editor.rulers": [100],
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
     "python.analysis.autoImportCompletions": false
