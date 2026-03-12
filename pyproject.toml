@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "A very fun ISA project"
 readme = "README.md"
 requires-python = ">=3.13"
+
+
 dependencies = [
     "numpy>=2.4.2",
     "pandas>=3.0.1",
@@ -11,11 +13,16 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.5.1",
+    "pytest>=9.0.2",
     "ruff>=0.15.4",
 ]
 
+
 [tool.ruff]
-line-length = 120
+line-length = 88
+
+
 
 exclude = [
     ".git",
@@ -25,21 +32,33 @@ exclude = [
     "dist",
 ]
 
+
+
 # Might tweak later
 [tool.ruff.lint]
 select = [
     "F", "E", "W", "I", "N", "UP", "B", "A", "C4", "SIM", "RUF", "PL"
 ]
 ignore = [
-    "ANN",     
+    "ANN",
     "D",
     "ARG001",
     "PLR0913",
     "PLR2004",
     "COM812",
     "ISC001",
+    "PLR0911",
+    "PLR0912",
+    "PLR0915",
+    "N806",
+    "N803",
+    "RUF012",
 ]
 unfixable = ["F401", "F841"]
 
 [tool.ruff.format]
 quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
