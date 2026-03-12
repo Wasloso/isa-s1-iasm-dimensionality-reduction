@@ -1,7 +1,2 @@
-import abc
-
-import pandas
-
-
-def AAAA():
+def aaa():
     pass
