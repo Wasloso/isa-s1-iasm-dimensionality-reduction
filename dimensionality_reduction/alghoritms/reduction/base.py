@@ -1,0 +1,45 @@
+from abc import ABC, abstractmethod
+from typing import Self
+
+import numpy as np
+
+
+class DimensionalityReductor(ABC):
+    """
+    Base class for dimensionality reduction algorithms.
+
+    Parameters
+    ----------
+    n_components : int
+        Number of components to keep.
+
+    Attributes
+    ----------
+    components_ : np.ndarray
+        The principal axes in feature space, representing the directions
+        of maximum variance in the data.
+    """
+
+    def __init__(self, n_components: int) -> None:
+        self.n_components = n_components
+        self.components_: np.ndarray | None = None
+        self._is_fitted: bool = False
+
+    @abstractmethod
+    def fit(self, X: np.ndarray, y: np.ndarray | None = None) -> Self:
+        pass
+
+    @abstractmethod
+    def transform(self, X: np.ndarray) -> np.ndarray:
+        pass
+
+    def fit_transform(self, X: np.ndarray, y: np.ndarray | None = None) -> np.ndarray:
+        self.fit(X, y)
+        return self.transform(X)
+
+    def _ensure_fitted(self) -> None:
+        if not self._is_fitted:
+            raise RuntimeError(
+                f"This {self.__class__.__name__} instance is not fitted yet. "
+                "Call 'fit' with appropriate arguments before using this estimator."
+            )
