@@ -10,7 +10,7 @@ class DimensionalityReductor(ABC):
 
     Parameters
     ----------
-    n_components : int
+    n_components : int | float | None
         Number of components to keep.
 
     Attributes
@@ -20,7 +20,7 @@ class DimensionalityReductor(ABC):
         of maximum variance in the data.
     """
 
-    def __init__(self, n_components: int) -> None:
+    def __init__(self, n_components: int | float | None) -> None:
         self.n_components = n_components
         self.components_: np.ndarray | None = None
         self._is_fitted: bool = False
