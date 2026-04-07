@@ -85,9 +85,7 @@ class LDA(InductiveDimensionalityReductor):
         if nc is None:
             return max_components
         if not isinstance(nc, int):
-            raise TypeError(
-                f"n_components must be int or None for LDA; got {type(nc).__name__}."
-            )
+            raise TypeError(f"n_components must be int or None for LDA; got {type(nc).__name__}.")
         if not (1 <= nc <= max_components):
             raise ValueError(
                 f"n_components={nc!r} must satisfy "
