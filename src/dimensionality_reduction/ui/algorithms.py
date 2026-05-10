@@ -12,14 +12,10 @@ raw arrays directly.
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
 from typing import Any
 
 import numpy as np
 import streamlit as st
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from dimensionality_reduction.alghoritms.metrics import trustworthiness
 from dimensionality_reduction.alghoritms.reduction.lda import LDA
@@ -27,9 +23,7 @@ from dimensionality_reduction.alghoritms.reduction.pca import PCA
 from dimensionality_reduction.alghoritms.reduction.tsne import TSNE
 from dimensionality_reduction.alghoritms.reduction.umap import UMAP
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
+AVAILABLE_METHODS: tuple[str, ...] = ("PCA", "LDA", "t-SNE", "UMAP")
 
 
 @st.cache_data(show_spinner=False)
@@ -78,27 +72,22 @@ def decode_embedding(
     return np.frombuffer(embedding_bytes, dtype=embedding_dtype).reshape(embedding_shape)
 
 
-# ---------------------------------------------------------------------------
-# Internal dispatch
-# ---------------------------------------------------------------------------
-
-
 def _fit_transform(
     method: str,
     params: dict[str, Any],
     X: np.ndarray,
     y: np.ndarray | None,
 ) -> tuple[np.ndarray, dict[str, Any]]:
-    if method == "PCA":
-        embedding, metrics = _run_pca(params, X)
-    elif method == "LDA":
-        embedding, metrics = _run_lda(params, X, y)
-    elif method == "t-SNE":
-        embedding, metrics = _run_tsne(params, X)
-    elif method == "UMAP":
-        embedding, metrics = _run_umap(params, X)
-    else:
-        raise ValueError(f"Unknown method: {method!r}")
+    runners: dict[str, Any] = {
+        "PCA": lambda: _run_pca(params, X),
+        "LDA": lambda: _run_lda(params, X, y),
+        "t-SNE": lambda: _run_tsne(params, X),
+        "UMAP": lambda: _run_umap(params, X),
+    }
+    run = runners.get(method)
+    if run is None:
+        raise ValueError(f"Unknown method: {method!r}. Expected one of {sorted(runners)}.")
+    embedding, metrics = run()
 
     k = min(5, X.shape[0] - 1)
     metrics["trustworthiness"] = trustworthiness(X, embedding, k=k)

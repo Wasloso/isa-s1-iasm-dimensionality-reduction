@@ -44,10 +44,15 @@ class PCA(InductiveDimensionalityReductor):
         self.eigenvalues_ = eigenvalues
         total_var = np.sum(eigenvalues)
 
+        # Compute full explained variance ratios first so float n_components
+        # (variance threshold) can choose k based on the cumulative curve.
+        full_evr = eigenvalues / total_var if total_var > 0 else np.zeros_like(eigenvalues)
+        self.explained_variance_ratio_ = full_evr
+
         k = self._resolve_n_components(n_features)
         self.n_components_ = k
         self.components_ = eigenvectors[:, :k]
-        self.explained_variance_ratio_ = eigenvalues[:k] / total_var
+        self.explained_variance_ratio_ = full_evr[:k]
         self._is_fitted = True
         return self
 
@@ -79,6 +84,11 @@ class PCA(InductiveDimensionalityReductor):
         if nc is None:
             return n_features
         if isinstance(nc, float):
+            if self.explained_variance_ratio_ is None:
+                raise RuntimeError(
+                    "explained_variance_ratio_ must be computed before resolving "
+                    "float n_components."
+                )
             cumulative = np.cumsum(self.explained_variance_ratio_)
             return int(np.argmax(cumulative >= nc) + 1)
         return int(nc)

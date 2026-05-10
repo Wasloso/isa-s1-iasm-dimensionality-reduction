@@ -9,9 +9,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-# ---------------------------------------------------------------------------
 # Scatter plot (2D / 3D)
-# ---------------------------------------------------------------------------
 
 
 def make_scatter(
@@ -115,9 +113,7 @@ def make_scatter(
     return fig
 
 
-# ---------------------------------------------------------------------------
 # Explained variance bar chart (PCA / LDA)
-# ---------------------------------------------------------------------------
 
 
 def make_variance_chart(
