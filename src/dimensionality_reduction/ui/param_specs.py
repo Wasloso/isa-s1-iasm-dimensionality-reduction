@@ -34,9 +34,7 @@ from typing import Any, Literal
 
 import streamlit as st
 
-# ---------------------------------------------------------------------------
 # DataContext — runtime constraints derived from the selected dataset
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -48,9 +46,7 @@ class DataContext:
     n_output_dims: int = 2
 
 
-# ---------------------------------------------------------------------------
 # ParamSpec — metadata for a single hyperparameter widget
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -89,9 +85,7 @@ class ParamSpec:
     default_fn: Callable[[DataContext], Any] | None = None
 
 
-# ---------------------------------------------------------------------------
 # Specs registry
-# ---------------------------------------------------------------------------
 
 
 def _lda_max_k(ctx: DataContext) -> int:
@@ -265,9 +259,7 @@ _EXPANDER_TITLES: dict[str, str] = {
 }
 
 
-# ---------------------------------------------------------------------------
 # Widget rendering helpers
-# ---------------------------------------------------------------------------
 
 
 def _render_one(spec: ParamSpec, ctx: DataContext) -> Any:
@@ -370,9 +362,7 @@ def _render_lda_params(ctx: DataContext) -> dict[str, Any]:
     return params
 
 
-# ---------------------------------------------------------------------------
 # Public entry point
-# ---------------------------------------------------------------------------
 
 
 def render_params(method: str, ctx: DataContext) -> dict[str, Any]:

@@ -18,14 +18,10 @@ cd isa-s1-iasm-dimensionality-reduction
 uv sync
 ```
 
-## How to Run
+## Run the Streamlit app
 
-Recommended way is to simply prefix commands with `uv run` to ensure they run in the correct environment.
-For example:
 ```bash
-uv run python dimensionality_reduction/main.py
-#or
-uv run python -m dimensionality_reduction
+uv run streamlit run src/dimensionality_reduction/ui/app.py
 ```
 
 ## Development workflow
@@ -44,7 +40,8 @@ If you want to add a new library simply:
 
 ## Project Structure
 
-- `dimensionality_reduction/`: Main package.
+- `src/dimensionality_reduction/`: Main package.
     - `algorithms/`: Implementation of DR methods.
+    - `ui/`: Streamlit app.
 - `tests/`: Unit tests for algorithms.
 - `data/`: Place datasets here (if they're not too large tho).

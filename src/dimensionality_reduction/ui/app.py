@@ -2,29 +2,56 @@
 Streamlit app — Dimensionality Reduction Explorer.
 
 Run with:
-    uv run streamlit run app/app.py
+    uv run streamlit run src/dimensionality_reduction/ui/app.py
 """
 
 from __future__ import annotations
 
 import io
-import sys
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import streamlit as st
 from sklearn import datasets as sklearn_datasets
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+from dimensionality_reduction.ui.algorithms import (
+    AVAILABLE_METHODS,
+    decode_embedding,
+    run_reduction,
+)
+from dimensionality_reduction.ui.param_specs import DataContext, render_params
+from dimensionality_reduction.ui.plots import make_scatter, make_variance_chart
 
-from app.algorithms import decode_embedding, run_reduction
-from app.param_specs import DataContext, render_params
-from app.plots import make_scatter, make_variance_chart
 
-# ---------------------------------------------------------------------------
+def _encode_labels(y_raw: np.ndarray) -> tuple[np.ndarray | None, np.ndarray]:
+    """
+    Return (y_encoded_for_models, y_original_for_colouring).
+
+    - For string/object labels we map to integer classes (required by LDA).
+    - For numeric labels we pass them through (still usable for colouring).
+    """
+
+    if y_raw.dtype.kind in ("U", "O"):
+        _classes, y = np.unique(y_raw, return_inverse=True)
+        return y.astype(np.int64), y_raw
+    return y_raw.astype(np.float64), y_raw
+
+
+def _prepare_model_frame(
+    df_raw: pd.DataFrame, feature_cols: list[str], missing_strategy: str
+) -> pd.DataFrame:
+    df_model = df_raw
+    if missing_strategy == "Drop rows with missing values":
+        df_model = df_model.dropna(subset=feature_cols)
+    else:
+        means = df_model[feature_cols].mean(numeric_only=True)
+        df_model = df_model.copy()
+        df_model[feature_cols] = df_model[feature_cols].fillna(means)
+    return df_model
+
+
 # Page config
-# ---------------------------------------------------------------------------
+
 
 st.set_page_config(
     page_title="DR Explorer",
@@ -36,9 +63,9 @@ st.set_page_config(
 st.title("Dimensionality Reduction Explorer")
 st.caption("Load a dataset, select features, pick an algorithm and explore the embedding.")
 
-# ---------------------------------------------------------------------------
+
 # Sidebar — Data
-# ---------------------------------------------------------------------------
+
 
 BUILTIN_DATASETS = {
     "Iris": "load_iris",
@@ -53,6 +80,7 @@ with st.sidebar:
 
     df_raw: pd.DataFrame | None = None
     default_label_col: str | None = None
+    missing_strategy: str = "Drop rows with missing values"
 
     if source == "Built-in dataset":
         dataset_name = st.selectbox("Dataset", list(BUILTIN_DATASETS))
@@ -72,9 +100,7 @@ with st.sidebar:
         else:
             st.info("Upload a CSV file to continue.")
 
-    # ------------------------------------------------------------------
     # Sidebar — Features
-    # ------------------------------------------------------------------
 
     if df_raw is not None:
         st.header("2 · Features")
@@ -86,6 +112,19 @@ with st.sidebar:
             options=numeric_cols,
             default=numeric_cols,
             help="Columns used as input to the DR algorithm.",
+        )
+
+        st.caption(
+            "Missing values (NaN) in selected features can break algorithms like PCA/t-SNE/UMAP."
+        )
+        missing_strategy = st.radio(
+            "Missing value handling",
+            options=["Drop rows with missing values", "Fill with mean (per column)"],
+            index=0,
+            help=(
+                "Drop removes any row where at least one selected feature is missing. "
+                "Fill replaces missing feature values with that feature's mean."
+            ),
         )
 
         label_options = ["(none)", *all_cols]
@@ -101,17 +140,13 @@ with st.sidebar:
         if label_col == "(none)":
             label_col = None
 
-        # ------------------------------------------------------------------
         # Sidebar — Algorithm
-        # ------------------------------------------------------------------
 
         st.header("3 · Algorithm")
-        method = st.radio("Method", ["PCA", "LDA", "t-SNE", "UMAP"])
+        method = st.radio("Method", list(AVAILABLE_METHODS))
         n_output_dims = st.radio("Output dimensions", [2, 3], horizontal=True)
 
-        # ------------------------------------------------------------------
         # Sidebar — Hyperparameters
-        # ------------------------------------------------------------------
 
         st.header("4 · Hyperparameters")
         params: dict = {"n_components": n_output_dims}
@@ -127,25 +162,19 @@ with st.sidebar:
         else:
             params.update(render_params(method, ctx))
 
-        # ------------------------------------------------------------------
         # Sidebar — Run button
-        # ------------------------------------------------------------------
 
         st.divider()
-        run_btn = st.button("▶ Run", type="primary", use_container_width=True)
+        run_btn = st.button("▶ Run", type="primary", width="stretch")
 
-# ---------------------------------------------------------------------------
 # Main area
-# ---------------------------------------------------------------------------
 
 if df_raw is None:
     st.stop()
 
 tab_data, tab_results = st.tabs(["Data", "Results"])
 
-# ------------------------------------------------------------------
 # Tab 1 — Data preview
-# ------------------------------------------------------------------
 
 with tab_data:
     st.subheader("Dataset preview")
@@ -157,15 +186,45 @@ with tab_data:
         df_raw[label_col].nunique() if label_col else "—",
     )
 
-    st.dataframe(df_raw.head(10), use_container_width=True)
+    st.dataframe(df_raw.head(10), width="stretch")
 
     if feature_cols:
-        st.subheader("Feature statistics")
-        st.dataframe(df_raw[feature_cols].describe().T, use_container_width=True)
+        st.subheader("Missing data inspection")
+        miss = df_raw[feature_cols].isna()
+        rows_with_missing = int(miss.any(axis=1).sum())
+        total_rows = int(df_raw.shape[0])
+        pct = (rows_with_missing / total_rows * 100.0) if total_rows else 0.0
 
-# ------------------------------------------------------------------
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Rows with any missing selected feature", rows_with_missing)
+        m2.metric("Percent of rows affected", f"{pct:.2f}%")
+        m3.metric(
+            "Recommended handling",
+            "Drop" if rows_with_missing > 0 else "None needed",
+            help=(
+                "If many rows are missing, imputation may preserve sample size but can distort distances. "
+                "Dropping is safest for algorithm stability."
+            ),
+        )
+
+        with st.expander("Per-feature missing counts", expanded=False):
+            per_col_missing = miss.sum(axis=0).sort_values(ascending=False)
+            st.dataframe(
+                per_col_missing.to_frame(name="missing_values"),
+                width="stretch",
+            )
+
+        if rows_with_missing > 0:
+            st.info(
+                "To run the algorithms successfully, handle missing values. "
+                "Use the sidebar’s **Missing value handling** option: "
+                "**Drop rows with missing values** (safest) or **Fill with mean**."
+            )
+
+        st.subheader("Feature statistics")
+        st.dataframe(df_raw[feature_cols].describe().T, width="stretch")
+
 # Tab 2 — Results
-# ------------------------------------------------------------------
 
 with tab_results:
     if not feature_cols:
@@ -181,16 +240,32 @@ with tab_results:
         st.stop()
 
     if run_btn:
-        X = df_raw[feature_cols].to_numpy(dtype=np.float64)
+        df_model = _prepare_model_frame(df_raw, feature_cols, missing_strategy)
+
+        remaining_missing_cols = (
+            df_model[feature_cols].isna().sum(axis=0).loc[lambda s: s > 0].index.tolist()
+        )
+        if remaining_missing_cols:
+            st.error(
+                "Some selected features still contain missing values after applying the chosen strategy: "
+                f"{', '.join(map(str, remaining_missing_cols))}. "
+                "Try dropping rows with missing values, or remove those features from the selection."
+            )
+            st.stop()
+
+        if df_model.shape[0] == 0:
+            st.error(
+                "After handling missing values, there are no rows left to run the algorithm on. "
+                "Try selecting different features or switching the missing value strategy."
+            )
+            st.stop()
+
+        X = df_model[feature_cols].to_numpy(dtype=np.float64)
         y = None
         if label_col is not None:
-            raw_labels = df_raw[label_col].to_numpy()
-            # Encode string labels as integers for LDA; keep originals for colouring
-            if raw_labels.dtype.kind in ("U", "O"):
-                classes, y = np.unique(raw_labels, return_inverse=True)
-                y = y.astype(np.int64)
-            else:
-                y = raw_labels.astype(np.float64)
+            y, label_values = _encode_labels(df_model[label_col].to_numpy())
+        else:
+            label_values = None
 
         with st.spinner(f"Running {method}…"):
             try:
@@ -208,9 +283,7 @@ with tab_results:
                 st.session_state["last_method"] = method
                 st.session_state["last_params"] = params
                 st.session_state["last_label_col"] = label_col
-                st.session_state["last_label_values"] = (
-                    df_raw[label_col].to_numpy() if label_col else None
-                )
+                st.session_state["last_label_values"] = label_values
                 st.session_state["last_n_output_dims"] = n_output_dims
             except Exception as exc:
                 st.error(f"Error running {method}: {exc}")
@@ -238,7 +311,7 @@ with tab_results:
         title=title,
         dims=used_dims,
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     # Metrics
     st.subheader("Metrics")
@@ -246,7 +319,7 @@ with tab_results:
     if used_method in ("PCA", "LDA") and "explained_variance_ratio" in metrics:
         evr = metrics["explained_variance_ratio"]
         var_fig = make_variance_chart(evr, used_method)
-        st.plotly_chart(var_fig, use_container_width=True)
+        st.plotly_chart(var_fig, width="stretch")
 
         total_pct = sum(evr) * 100
         mc1, mc2 = st.columns(2)

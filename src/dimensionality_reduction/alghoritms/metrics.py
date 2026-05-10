@@ -55,28 +55,17 @@ def trustworthiness(
     D_high = _pairwise_sq_dist(X_high)
     D_low = _pairwise_sq_dist(X_low)
 
-    # For each point i, rank of every other point j in the *original* space.
-    # Because D_high has inf on the diagonal, self is always sorted last.
-    # ranks_high[i, j] == 0  →  j is the nearest neighbour of i in X_high.
-    # ranks_high[i, j] == k-1  →  j is the k-th nearest neighbour.
-    # ranks_high[i, i] == n-1  →  self is last (infinite distance).
     order_high = np.argsort(D_high, axis=1)
     ranks_high = np.empty_like(order_high)
     for i in range(n):
         ranks_high[i, order_high[i]] = np.arange(n)
 
-    # k-nearest neighbours in the LOW-dimensional embedding.
-    # D_low also has inf on the diagonal, so [:, :k] correctly skips self.
     nn_low = np.argsort(D_low, axis=1)[:, :k]  # shape (n, k)
 
     penalty = 0.0
     for i in range(n):
         for j in nn_low[i]:
             r = int(ranks_high[i, j])
-            # ranks 0..k-1 are the k true nearest neighbours in original space.
-            # rank >= k means j is NOT in the k-NN → contributes to penalty.
-            # penalty = r - (k-1) so that the just-outside rank k gives penalty 1,
-            # matching the 1-indexed formula in the literature (r_1 - k where r_1 = r+1).
             if r >= k:
                 penalty += r - (k - 1)
 
